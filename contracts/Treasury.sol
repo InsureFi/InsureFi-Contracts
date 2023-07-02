@@ -4,17 +4,16 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/IRanceTreasury.sol";
+import "./interfaces/ITreasury.sol";
 
-// A Smart-contract that holds the insurance protocol funds
-contract RanceTreasury is AccessControl, IRanceTreasury{
+// A Smart-contract that holds the insurance funds
+contract Treasury is AccessControl, ITreasury{
     using SafeERC20 for IERC20;
 
     //protocol address
     address public protocol;
 
-    //create a mapping so other addresses can interact with this wallet. 
-    mapping(address => bool) private _admins;
+    address  private ADMIN;
 
     // Event triggered once an address withdraws from the contract
     event Withdraw(address indexed user, uint amount);
@@ -32,8 +31,8 @@ contract RanceTreasury is AccessControl, IRanceTreasury{
 
 
     constructor(address _admin){
-        _setupRole("admin", _admin); 
-        _admins[_admin] = true;
+        ADMIN = _admin; 
+        _setupRole("admin", _admin);
     }
 
 
@@ -54,7 +53,7 @@ contract RanceTreasury is AccessControl, IRanceTreasury{
 
 
     /**
-     * @notice sets the address of the insurance protocol contract 
+     * @notice sets the address of the insurance contract 
      * @param _address the address of the contract
      */
     function setInsuranceProtocolAddress(address _address)
@@ -69,27 +68,21 @@ contract RanceTreasury is AccessControl, IRanceTreasury{
     }
 
     //this function is used to add admin of the treasury.  OnlyOwner can add addresses.
-    function addAdmin(address admin) 
+    function updateAdmin(address admin) 
         onlyRole("admin")
-        public {
-       _admins[admin] = true;
+        external {
         _grantRole("admin", admin);
+        _revokeRole("admin", ADMIN);
+        ADMIN = admin;
     }
     
-    //remove an admin from the treasury.
-    function removeAdmin(address admin)
-        onlyRole("admin")
-        public {
-        _admins[admin] = false;   
-        _revokeRole("admin", admin);
-    }
 
 
     /**
-     * @notice withdraw cro
+     * @notice withdraw eth
      * @param _amount the withdrawal amount
      */
-    function withdraw(uint _amount) public override onlyRole("admin"){
+    function withdraw(uint _amount) external override onlyRole("admin"){
         payable(msg.sender).transfer(_amount);
         emit Withdraw(msg.sender, _amount);
     }
@@ -101,15 +94,13 @@ contract RanceTreasury is AccessControl, IRanceTreasury{
      * @param _amount the deposited amount
      */
     function withdrawToken(address _token, address _to, uint _amount) 
-        public 
+        external 
         override
         onlyAuthorized{
         IERC20(_token).safeTransfer(_to, _amount);
         emit Withdraw(_to, _amount);
     }
 
-    receive () external payable{
-        
-    }
+    receive () external payable{}
     
 }

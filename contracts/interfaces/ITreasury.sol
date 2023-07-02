@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-/// @title the interface for the sport prediction treasury
-/// @notice Declares the functions that the `SportPredictionTreasury` contract exposes externally
-interface IRanceTreasury {
+/// @title the interface for the treasury
+/// @notice Declares the functions that the `treasury` contract exposes externally
+interface ITreasury {
 
-    // withdraw CRO
+    // withdraw ETH
     function withdraw(uint _amount)external;
 
     // withdraw other token
