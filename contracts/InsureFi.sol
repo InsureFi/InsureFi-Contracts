@@ -27,11 +27,6 @@ contract InsureFi is
     */
     ITreasury public treasury;
 
-    /**
-    *  @dev Instance of RANCE token
-    */
-    IERC20Upgradeable public RANCE;
-
 
     /** 
     * @dev list of package plan ids
@@ -200,17 +195,12 @@ contract InsureFi is
      */
     event TreasuryAddressSet(address indexed _address);
 
-    /**
-     * @dev Emitted when the rance address is set
-     */
-    event RanceAddressSet(address indexed _address);
-
 
     /**
      * @dev check that the address passed is not 0. 
      */
     modifier notAddress0(address _address) {
-        require(_address != address(0), "Rance Protocol: Address 0 is not allowed");
+        require(_address != address(0), "Address 0 is not allowed");
         _;
     }
 
@@ -218,8 +208,8 @@ contract InsureFi is
     /**
      * @notice Contract constructor
      * @param _treasuryAddress treasury contract address
-     * @param _uniswapRouter mmfinance router address
-     * @param _paymentToken BUSD token address
+     * @param _uniswapRouter  router address
+     * @param _paymentToken USDC token address
      */
     function initialize(
         address _treasuryAddress,
@@ -227,7 +217,7 @@ contract InsureFi is
          address _paymentToken)
         public initializer { 
         __Ownable_init();
-        treasury = IRanceTreasury(_treasuryAddress);
+        treasury = ITreasury(_treasuryAddress);
         uniswapRouter = IUniswapV2Router02(_uniswapRouter);
         paymentTokenNameToAddress["USDC"] = _paymentToken;
         paymentTokenAdded[_paymentToken] = true;
@@ -235,7 +225,7 @@ contract InsureFi is
         paymentTokens.push("USDC");
         uint32[3] memory periodInSeconds = [15780000, 31560000, 63120000];
         uint8[3] memory insuranceFees = [100, 50, 25];
-        uint80[3] memory uninsureFees = [1000 ether, 2000 ether, 5000 ether];
+        uint80[3] memory uninsureFees = [10 ether, 20 ether, 50 ether];
         bytes32[3] memory ids = [
             keccak256(abi.encodePacked(periodInSeconds[0],insuranceFees[0],uninsureFees[0])),
             keccak256(abi.encodePacked(periodInSeconds[1],insuranceFees[1],uninsureFees[1])),
@@ -261,28 +251,17 @@ contract InsureFi is
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner{}
 
     /**
-     * @notice sets the address of the rance protocol treasury contract
+     * @notice sets the address of the treasury contract
      * @param _treasuryAddress the address of treasury
      */
     function setTreasuryAddress(address _treasuryAddress)
         external 
         onlyOwner notAddress0(_treasuryAddress)
     {
-        treasury = IRanceTreasury(_treasuryAddress);
+        treasury = ITreasury(_treasuryAddress);
         emit TreasuryAddressSet(_treasuryAddress);
     }
 
-    /**
-     * @notice sets the address of the rance token
-     * @param _token the rance token address 
-     */
-    function setRance(address _token)
-        external 
-        onlyOwner notAddress0(_token)
-    {
-        RANCE = IERC20Upgradeable(_token);
-        emit RanceAddressSet(_token);
-    }
 
 
 
@@ -368,7 +347,7 @@ contract InsureFi is
             _insuranceFee,
             _uninsureFee));
         
-        require(planIdToPackagePlan[_planId].planId != _planId, "Rance Protocol: PackagePlan already exists");
+        require(planIdToPackagePlan[_planId].planId != _planId, "PackagePlan already exists");
 
         planIdToPackagePlan[_planId] = PackagePlan(
             _planId,
@@ -399,7 +378,7 @@ contract InsureFi is
     @param _token ERC20 token address
     */
     function addPaymentToken(string memory _tokenName,address _token) external onlyOwner {
-        require(!paymentTokenAdded[_token], "Rance Protocol:paymentToken already added");
+        require(!paymentTokenAdded[_token], "paymentToken already added");
         paymentTokenAdded[_token] = true;
         paymentTokenNameToAddress[_tokenName] = _token;
         totalInsuranceLocked[_token] = 0;
