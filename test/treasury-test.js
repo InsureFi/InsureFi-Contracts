@@ -1,10 +1,12 @@
+/* eslint-disable no-unused-expressions */
 const { ethers, waffle, upgrades } = require("hardhat");
 const { expect } = require("chai");
+// eslint-disable-next-line node/no-extraneous-require
 const uniswapFactory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const uniswapRouter = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
 const WETH9 = require("@uniswap/v2-periphery/build/WETH9.json");
 
-describe("Rance Treasury Contract Test", () => {
+describe("Treasury Contract Test", () => {
   let paymentToken,
     treasury,
     deployer,
@@ -18,9 +20,9 @@ describe("Rance Treasury Contract Test", () => {
     [deployer, user] = await ethers.getSigners();
     provider = waffle.provider;
     const MockERC20 = await ethers.getContractFactory("MockERC20");
-    paymentToken = await MockERC20.deploy("MUSD Token", "MUSD");
-    const RanceTreasury = await ethers.getContractFactory("RanceTreasury");
-    const RanceProtocol = await ethers.getContractFactory("RanceProtocol");
+    paymentToken = await MockERC20.deploy("USDC Token", "USDC");
+    const Treasury = await ethers.getContractFactory("Treasury");
+    const Protocol = await ethers.getContractFactory("InsureFi");
     const Factory = new ethers.ContractFactory(
       uniswapFactory.abi,
       uniswapFactory.bytecode,
@@ -36,12 +38,12 @@ describe("Rance Treasury Contract Test", () => {
       uniswapRouter.bytecode,
       deployer
     );
-    treasury = await RanceTreasury.deploy(deployer.getAddress());
+    treasury = await Treasury.deploy(deployer.getAddress());
     factory = await Factory.deploy(deployer.getAddress());
     const weth = await Weth9.deploy();
     router = await Router.deploy(factory.address, weth.address);
     protocol = await upgrades.deployProxy(
-      RanceProtocol,
+      Protocol,
       [treasury.address, router.address, paymentToken.address],
       { kind: "uups" }
     );
@@ -65,7 +67,7 @@ describe("Rance Treasury Contract Test", () => {
       .to.be.reverted;
   });
 
-  it("Should withdraw BNB/CRO from treasury contract", async () => {
+  it("Should withdraw ETH from treasury contract", async () => {
     const amount = ethers.utils.parseUnits("50");
     await deployer.sendTransaction({ to: treasury.address, value: amount });
     const treasuryBalance = await provider.getBalance(treasury.address);
@@ -74,7 +76,7 @@ describe("Rance Treasury Contract Test", () => {
     expect(PostTreasuryBalance).to.be.equal(treasuryBalance.sub(amount));
   });
 
-  it("Should only allow admin withdraw BNB/CRO from treasury contract", async () => {
+  it("Should only allow admin withdraw ETH from treasury contract", async () => {
     const amount = ethers.utils.parseUnits("50");
     await deployer.sendTransaction({ to: treasury.address, value: amount });
 

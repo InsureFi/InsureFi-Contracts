@@ -225,7 +225,7 @@ contract InsureFi is
         paymentTokens.push("USDC");
         uint32[3] memory periodInSeconds = [15780000, 31560000, 63120000];
         uint8[3] memory insuranceFees = [100, 50, 25];
-        uint80[3] memory uninsureFees = [10 ether, 20 ether, 50 ether];
+        uint72[3] memory uninsureFees = [10 ether, 20 ether, 50 ether];
         bytes32[3] memory ids = [
             keccak256(abi.encodePacked(periodInSeconds[0],insuranceFees[0],uninsureFees[0])),
             keccak256(abi.encodePacked(periodInSeconds[1],insuranceFees[1],uninsureFees[1])),
@@ -395,7 +395,7 @@ contract InsureFi is
     */
     function removePaymentToken(string memory _tokenName) external onlyOwner {
         address _token = paymentTokenNameToAddress[_tokenName];
-        require(paymentTokenAdded[_token], "Rance Protocol:paymentToken does not exist");
+        require(paymentTokenAdded[_token], "paymentToken does not exist");
         paymentTokenAdded[_token] = false;
         for (uint i = 0; i < paymentTokens.length; i = i + 1) {
             if(keccak256(abi.encodePacked(paymentTokens[i])) == keccak256(abi.encodePacked(_tokenName))){
@@ -417,7 +417,7 @@ contract InsureFi is
     */
     function addInsureCoins(string[] memory _tokenNames, address[] memory _tokens) external onlyOwner {
         for (uint i = 0; i < _tokenNames.length; i = i + 1) {
-            require(!insureCoinAdded[_tokens[i]], "Rance Protocol:insureCoin already added");
+            require(!insureCoinAdded[_tokens[i]], "insureCoin already added");
             insureCoinAdded[_tokens[i]] = true;
             insureCoinNameToAddress[_tokenNames[i]] = _tokens[i];
             insureCoins.push(_tokenNames[i]);
@@ -434,7 +434,7 @@ contract InsureFi is
     function removeInsureCoins(string[] memory _tokenNames) external onlyOwner {
         for (uint i = 0; i < _tokenNames.length; i = i + 1) {
             address _token = insureCoinNameToAddress[_tokenNames[i]];
-            require(insureCoinAdded[_token], "Rance Protocol:insureCoin does not exist");
+            require(insureCoinAdded[_token], "insureCoin does not exist");
             insureCoinAdded[_token] = false;
             if(keccak256(abi.encodePacked(insureCoins[i])) == keccak256(abi.encodePacked(_tokenNames[i]))){
                 insureCoins[i] = insureCoins[insureCoins.length -1];
@@ -478,9 +478,9 @@ contract InsureFi is
         string memory _insureCoin,
         string memory _paymentToken
         ) public{
-        require(planIdToPackagePlan[_planId].isActivated, "Rance Protocol: PackagePlan not active");
-        require(insureCoinAdded[insureCoinNameToAddress[_insureCoin]], "Rance Protocol:insureCoin not supported");
-        require(paymentTokenAdded[paymentTokenNameToAddress[_paymentToken]], "Rance Protocol:paymentToken not supported");
+        require(planIdToPackagePlan[_planId].isActivated, "PackagePlan not active");
+        require(insureCoinAdded[insureCoinNameToAddress[_insureCoin]], "insureCoin not supported");
+        require(paymentTokenAdded[paymentTokenNameToAddress[_paymentToken]], "paymentToken not supported");
         uint insureAmount = getInsureAmount(_planId, _amount);
         uint insuranceFee = _amount.sub(insureAmount);
         address paymentToken = paymentTokenNameToAddress[_paymentToken];
@@ -497,7 +497,7 @@ contract InsureFi is
             paymentToken,
             insureCoin));
 
-        require(packageIdToPackage[_packageId].packageId != _packageId, "Rance Protocol: Package exist");
+        require(packageIdToPackage[_packageId].packageId != _packageId, "Package exist");
 
         Package memory package = Package({
             user: msg.sender,
@@ -534,10 +534,6 @@ contract InsureFi is
     }
 
 
-    function getUserReferralsLength(address _user) external view returns (uint){
-        return userToReferralIds[_user].length;
-    }
-
     /**
      * @notice get all user packages
      * @return Package return array of user packages
@@ -558,11 +554,11 @@ contract InsureFi is
      * @param _packageId id of package to cancel
      */
     function cancel(bytes32 _packageId) external nonReentrant{
-        require(packageIdToPackage[_packageId].packageId == _packageId, "Rance Protocol: Package does not exist");
+        require(packageIdToPackage[_packageId].packageId == _packageId, "Package does not exist");
 
         Package storage userPackage = packageIdToPackage[_packageId];
         require(isPackageActive(userPackage) && 
-        !userPackage.isCancelled, "Rance Protocol: Package Not Cancellable");
+        !userPackage.isCancelled, "Package Not Cancellable");
 
         userPackage.isCancelled = true;
         userPackage.isWithdrawn = true;
@@ -574,7 +570,7 @@ contract InsureFi is
             userPackage.insureOutput
         );
 
-        RANCE.safeTransferFrom(
+        IERC20Upgradeable(paymentTokenNameToAddress["USDC"]) .safeTransferFrom(
             msg.sender,
             address(treasury), 
             planIdToPackagePlan[userPackage.planId].uninsureFee
@@ -599,13 +595,13 @@ contract InsureFi is
      * @param _packageId id of package to withdraw
      */
     function withdraw(bytes32 _packageId) external nonReentrant{
-        require(packageIdToPackage[_packageId].packageId == _packageId, "Rance Protocol: Package does not exist");
+        require(packageIdToPackage[_packageId].packageId == _packageId, "Package does not exist");
 
         Package storage userPackage = packageIdToPackage[_packageId];
         require(!isPackageActive(userPackage) && 
         !userPackage.isWithdrawn && !userPackage.isCancelled && 
         block.timestamp <= userPackage.endTimestamp.add(30 days),
-         "Rance Protocol: Package Not Withdrawable");
+         "Package Not Withdrawable");
 
         userPackage.isWithdrawn = true;
         totalInsuranceLocked[userPackage.paymentToken] -= userPackage.initialDeposit;
@@ -638,7 +634,7 @@ contract InsureFi is
     function getInsureAmount(
         bytes32 _planId, 
         uint _amount) public view returns(uint){
-        require(planIdToPackagePlan[_planId].planId == _planId, "RanceProtocol: Plan does not exist");
+        require(planIdToPackagePlan[_planId].planId == _planId, "Plan does not exist");
         PackagePlan memory packagePlan = planIdToPackagePlan[_planId];
         uint percentage = packagePlan.insuranceFee; 
         uint numerator = _amount.mul(100);
